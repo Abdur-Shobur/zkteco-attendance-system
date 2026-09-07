@@ -1,25 +1,27 @@
 # ZKTeco Attendance System with Laravel
 
+<img src="./public/dashboard.png"/>
+
 A comprehensive Laravel application for integrating with ZKTeco SpeedFace V3L biometric devices to manage employee attendance tracking in real-time.
 
 ## Features
 
-- **Real-time Biometric Integration**: Connect to ZKTeco SpeedFace V3L devices over Wi-Fi/LAN
-- **Automatic Log Synchronization**: Retrieve check-in/check-out logs automatically or manually
-- **User Mapping**: Map biometric device users to Laravel users
-- **Multiple Verification Types**: Support for fingerprint, face recognition, card, and password
-- **Real-time Dashboard**: Modern web interface with live updates
-- **Export Functionality**: Export attendance logs to CSV
-- **Auto-sync**: Automatic synchronization every 1 minute via Laravel scheduler
-- **Device Management**: Test connections, get device info, and manage users
+-   **Real-time Biometric Integration**: Connect to ZKTeco SpeedFace V3L devices over Wi-Fi/LAN
+-   **Automatic Log Synchronization**: Retrieve check-in/check-out logs automatically or manually
+-   **User Mapping**: Map biometric device users to Laravel users
+-   **Multiple Verification Types**: Support for fingerprint, face recognition, card, and password
+-   **Real-time Dashboard**: Modern web interface with live updates
+-   **Export Functionality**: Export attendance logs to CSV
+-   **Auto-sync**: Automatic synchronization every 1 minute via Laravel scheduler
+-   **Device Management**: Test connections, get device info, and manage users
 
 ## Requirements
 
-- PHP 8.1 or higher
-- Laravel 10.x
-- MySQL/PostgreSQL database
-- ZKTeco SpeedFace V3L device (or compatible)
-- Network connectivity to the biometric device
+-   PHP 8.1 or higher
+-   Laravel 10.x
+-   MySQL/PostgreSQL database
+-   ZKTeco SpeedFace V3L device (or compatible)
+-   Network connectivity to the biometric device
 
 ## Installation
 
@@ -70,6 +72,7 @@ chmod +x setup-scheduler.sh
 
 **Quick Setup:**
 Add this cron job to run Laravel scheduler every minute:
+
 ```bash
 # Open crontab
 crontab -e
@@ -79,6 +82,7 @@ crontab -e
 ```
 
 **Manual Testing:**
+
 ```bash
 # Test the sync command
 php artisan attendance:sync
@@ -93,18 +97,20 @@ php artisan schedule:list
 ### 4. Device Network Configuration
 
 1. **Connect your ZKTeco device to the network**:
-   - Access device menu → Communication → Network
-   - Set IP address (e.g., 192.168.1.201)
-   - Set subnet mask and gateway
-   - Enable network communication
+
+    - Access device menu → Communication → Network
+    - Set IP address (e.g., 192.168.1.201)
+    - Set subnet mask and gateway
+    - Enable network communication
 
 2. **Test network connectivity**:
-   ```bash
-   ping 192.168.1.201
-   ```
+
+    ```bash
+    ping 192.168.1.201
+    ```
 
 3. **Verify device port** (default: 4370):
-   - Access device menu → Communication → Network → Port
+    - Access device menu → Communication → Network → Port
 
 ## Usage
 
@@ -121,13 +127,15 @@ Navigate to: `http://your-domain/attendance`
 ### 3. Sync Attendance Logs
 
 **Manual Sync:**
+
 1. Click "Sync Logs" button
 2. View sync results in the notification
 
 **Automatic Sync:**
-- If you've set up the Laravel scheduler (see installation step 3), the system automatically syncs attendance logs every minute
-- No manual intervention required - logs are continuously synchronized in the background
-- Check the Laravel logs for sync status and any errors
+
+-   If you've set up the Laravel scheduler (see installation step 3), the system automatically syncs attendance logs every minute
+-   No manual intervention required - logs are continuously synchronized in the background
+-   Check the Laravel logs for sync status and any errors
 
 ### 4. User Mapping
 
@@ -200,20 +208,22 @@ routes/
 ### Common Issues
 
 1. **Connection Failed**
-   - Verify device IP address and port
-   - Check network connectivity
-   - Ensure device is powered on
-   - Verify firewall settings
+
+    - Verify device IP address and port
+    - Check network connectivity
+    - Ensure device is powered on
+    - Verify firewall settings
 
 2. **No Logs Syncing**
-   - Check if device has attendance logs
-   - Verify device time settings
-   - Check Laravel logs for errors
+
+    - Check if device has attendance logs
+    - Verify device time settings
+    - Check Laravel logs for errors
 
 3. **User Mapping Issues**
-   - Ensure `device_user_id` field exists in users table
-   - Verify device user IDs match database records
-   - Check user mapping configuration
+    - Ensure `device_user_id` field exists in users table
+    - Verify device user IDs match database records
+    - Check user mapping configuration
 
 ### Debug Mode
 
@@ -225,6 +235,7 @@ ZKTECO_LOG_LEVEL=debug
 ```
 
 Check logs:
+
 ```bash
 tail -f storage/logs/laravel.log
 ```
@@ -234,28 +245,30 @@ tail -f storage/logs/laravel.log
 ### ZKTeco SpeedFace V3L Configuration
 
 1. **Initial Setup**:
-   - Power on the device
-   - Access admin menu (default: admin/123456)
-   - Go to System → Time to set correct time
+
+    - Power on the device
+    - Access admin menu (default: admin/123456)
+    - Go to System → Time to set correct time
 
 2. **Network Configuration**:
-   - Menu → Communication → Network
-   - Set static IP address
-   - Configure subnet mask and gateway
-   - Enable "Network Function"
+
+    - Menu → Communication → Network
+    - Set static IP address
+    - Configure subnet mask and gateway
+    - Enable "Network Function"
 
 3. **User Enrollment**:
-   - Menu → User Management → New User
-   - Assign unique user ID (this will be used for mapping)
-   - Enroll fingerprint/face data
-   - Set user privileges
+
+    - Menu → User Management → New User
+    - Assign unique user ID (this will be used for mapping)
+    - Enroll fingerprint/face data
+    - Set user privileges
 
 4. **Attendance Settings**:
-   - Menu → Attendance → Attendance Status
-   - Configure work codes if needed
-   - Set attendance rules
+    - Menu → Attendance → Attendance Status
+    - Configure work codes if needed
+    - Set attendance rules
 
 ## License
 
 This project is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
-# zkteco-attendance-system
