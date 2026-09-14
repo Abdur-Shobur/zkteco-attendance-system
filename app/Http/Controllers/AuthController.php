@@ -8,21 +8,11 @@ use Illuminate\Support\Facades\Validator;
 
 class AuthController extends Controller
 {
-    /**
-     * Show the login form
-     */
     public function showLoginForm()
     {
-        if (Auth::check()) {
-            return redirect()->route('attendance.index');
-        }
-        
         return view('login');
     }
 
-    /**
-     * Handle login request
-     */
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -33,34 +23,42 @@ class AuthController extends Controller
         if ($validator->fails()) {
             return redirect()->back()
                 ->withErrors($validator)
-                ->withInput();
+                ->withInput($request->only('email', 'remember'));
         }
 
         $credentials = $request->only('email', 'password');
-        $remember = $request->has('remember');
+        $remember = $request->boolean('remember');
 
-        if (Auth::attempt($credentials, $remember)) {
-            $request->session()->regenerate();
-            
-            return redirect()->intended(route('attendance.index'))
-                ->with('success', 'Welcome back, ' . Auth::user()->name . '!');
+        if (!Auth::attempt($credentials, $remember)) {
+            return redirect()->back()
+                ->withErrors(['email' => 'Invalid email or password.'])
+                ->withInput($request->only('email', 'remember'));
         }
 
-        return redirect()->back()
-            ->withErrors(['email' => 'Invalid credentials provided.'])
-            ->withInput();
+        $user = Auth::user();
+
+        if (!$user->is_admin) {
+            Auth::logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            return redirect()->back()
+                ->withErrors(['email' => 'You do not have admin access to this panel.'])
+                ->withInput($request->only('email', 'remember'));
+        }
+
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('attendance.index'))
+            ->with('success', 'Welcome back, ' . $user->name . '!');
     }
 
-    /**
-     * Handle logout request
-     */
     public function logout(Request $request)
     {
         Auth::logout();
-        
         $request->session()->invalidate();
         $request->session()->regenerateToken();
-        
+
         return redirect()->route('login')
             ->with('success', 'You have been logged out successfully.');
     }

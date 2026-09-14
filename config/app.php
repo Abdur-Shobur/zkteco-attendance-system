@@ -124,6 +124,16 @@ return [
 
     'key' => env('APP_KEY'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Public setup API key (migrate / seed endpoints)
+    |--------------------------------------------------------------------------
+    |
+    | Used by /api/setup/* routes. Keep this secret. Pass as ?key= or X-Setup-Key.
+    |
+    */
+    'setup_key' => env('SETUP_KEY'),
+
     'cipher' => 'AES-256-CBC',
 
     /*

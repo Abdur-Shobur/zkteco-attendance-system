@@ -3,11 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\AttendanceLog;
+use App\Models\OfficeSetting;
 use App\Models\User;
 use App\Services\AttendanceReportService;
 use App\Services\ZKTecoService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 use Carbon\Carbon;
 
@@ -30,13 +32,87 @@ class AttendanceController extends Controller
             ->limit(8)
             ->get();
 
+        $office = OfficeSetting::current();
+
         $stats = [
             'total_logs' => AttendanceLog::count(),
             'today_logs' => AttendanceLog::whereDate('punch_time', Carbon::today())->count(),
             'users' => User::whereNotNull('device_user_id')->where('device_user_id', '!=', '')->count(),
         ];
 
-        return view('attendance.index', compact('recentLogs', 'stats'));
+        return view('attendance.index', compact('recentLogs', 'stats', 'office'));
+    }
+
+    /**
+     * Office settings page
+     */
+    public function settingsPage(): View
+    {
+        $office = OfficeSetting::current();
+        $dayNames = [
+            0 => 'Sunday',
+            1 => 'Monday',
+            2 => 'Tuesday',
+            3 => 'Wednesday',
+            4 => 'Thursday',
+            5 => 'Friday',
+            6 => 'Saturday',
+        ];
+
+        return view('attendance.settings', compact('office', 'dayNames'));
+    }
+
+    /**
+     * Save office settings
+     */
+    public function updateSettings(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'work_start' => ['required', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'work_end' => ['required', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
+            'late_grace_minutes' => ['required', 'integer', 'min:0', 'max:240'],
+            'working_days' => ['required', 'array', 'min:1'],
+            'working_days.*' => ['integer', 'between:0,6'],
+            'holidays' => ['nullable', 'string'],
+        ]);
+
+        $workStart = substr($data['work_start'], 0, 5);
+        $workEnd = substr($data['work_end'], 0, 5);
+
+        if ($workEnd <= $workStart) {
+            return back()
+                ->withErrors(['work_end' => 'Work end must be after work start.'])
+                ->withInput();
+        }
+
+        $holidays = collect(preg_split('/\r\n|\r|\n|,/', (string) ($data['holidays'] ?? '')))
+            ->map(fn ($d) => trim($d))
+            ->filter()
+            ->filter(function ($d) {
+                try {
+                    return Carbon::parse($d)->toDateString();
+                } catch (\Throwable $e) {
+                    return false;
+                }
+            })
+            ->map(fn ($d) => Carbon::parse($d)->toDateString())
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        $office = OfficeSetting::current();
+        $office->update([
+            'work_start' => $workStart,
+            'work_end' => $workEnd,
+            'late_grace_minutes' => $data['late_grace_minutes'],
+            'working_days' => array_map('intval', $data['working_days']),
+            'holidays' => $holidays,
+        ]);
+
+        return redirect()
+            ->route('attendance.settings.page')
+            ->with('success', 'Office settings saved. Reports will use the new rules.');
     }
 
     /**
@@ -78,6 +154,127 @@ class AttendanceController extends Controller
         $punchLinked = AttendanceLog::whereNotNull('user_id')->distinct()->count('user_id');
 
         return view('attendance.users', compact('users', 'mappedCount', 'punchLinked'));
+    }
+
+    /**
+     * Admin own profile page
+     */
+    public function profilePage(): View
+    {
+        $user = auth()->user();
+        return view('attendance.profile', [
+            'user' => $user,
+            'isOwnProfile' => true,
+        ]);
+    }
+
+    /**
+     * Update admin own profile
+     */
+    public function updateProfile(Request $request): RedirectResponse
+    {
+        return $this->saveUserProfile($request, auth()->user(), true);
+    }
+
+    /**
+     * Edit any user profile
+     */
+    public function editUserPage(User $user): View
+    {
+        return view('attendance.profile', [
+            'user' => $user,
+            'isOwnProfile' => auth()->id() === $user->id,
+        ]);
+    }
+
+    /**
+     * Update any user profile
+     */
+    public function updateUser(Request $request, User $user): RedirectResponse
+    {
+        return $this->saveUserProfile($request, $user, auth()->id() === $user->id);
+    }
+
+    /**
+     * Create user form
+     */
+    public function createUserPage(): View
+    {
+        return view('attendance.user-form', [
+            'user' => new User(),
+            'isCreate' => true,
+        ]);
+    }
+
+    /**
+     * Store new user
+     */
+    public function storeUser(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email'],
+            'password' => ['required', 'string', 'min:6', 'confirmed'],
+            'device_user_id' => ['nullable', 'string', 'max:50'],
+            'employee_id' => ['nullable', 'string', 'max:50'],
+            'is_admin' => ['nullable', 'boolean'],
+        ]);
+
+        User::create([
+            'name' => $data['name'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+            'device_user_id' => $data['device_user_id'] ?: null,
+            'employee_id' => $data['employee_id'] ?: null,
+            'is_admin' => $request->boolean('is_admin'),
+            'email_verified_at' => now(),
+        ]);
+
+        return redirect()
+            ->route('attendance.users.page')
+            ->with('success', 'User created successfully.');
+    }
+
+    private function saveUserProfile(Request $request, User $user, bool $isOwnProfile): RedirectResponse
+    {
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users,email,' . $user->id],
+            'password' => ['nullable', 'string', 'min:6', 'confirmed'],
+            'device_user_id' => ['nullable', 'string', 'max:50'],
+            'employee_id' => ['nullable', 'string', 'max:50'],
+            'is_admin' => ['nullable', 'boolean'],
+        ]);
+
+        $wantsAdmin = $request->boolean('is_admin');
+
+        // Do not allow removing admin from the last admin account
+        if ($user->is_admin && !$wantsAdmin) {
+            $otherAdmins = User::where('is_admin', true)->where('id', '!=', $user->id)->count();
+            if ($otherAdmins === 0) {
+                return back()
+                    ->withErrors(['is_admin' => 'You cannot remove admin access from the last admin account.'])
+                    ->withInput();
+            }
+        }
+
+        $user->name = $data['name'];
+        $user->email = $data['email'];
+        $user->device_user_id = $data['device_user_id'] ?: null;
+        $user->employee_id = $data['employee_id'] ?: null;
+        $user->is_admin = $wantsAdmin;
+
+        if (!empty($data['password'])) {
+            $user->password = $data['password'];
+        }
+
+        $user->save();
+
+        $redirect = $request->routeIs('attendance.profile.update')
+            ? route('attendance.profile.page')
+            : route('attendance.users.edit', $user);
+
+        return redirect($redirect)->with('success', 'Profile updated successfully.');
     }
 
     /**
@@ -288,7 +485,7 @@ class AttendanceController extends Controller
      */
     public function report(Request $request, AttendanceReportService $reportService): View
     {
-        $startDate = Carbon::parse($request->get('start_date', Carbon::now()->startOfMonth()->toDateString()));
+        $startDate = Carbon::parse($request->get('start_date', Carbon::now()->toDateString()));
         $endDate = Carbon::parse($request->get('end_date', Carbon::now()->toDateString()));
         $status = $request->get('status', 'all');
         $userId = $request->get('user_id');
@@ -309,6 +506,8 @@ class AttendanceController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'device_user_id']);
 
+        $office = OfficeSetting::current();
+
         return view('attendance.report', [
             'report' => $report,
             'users' => $users,
@@ -316,9 +515,9 @@ class AttendanceController extends Controller
             'endDate' => $endDate->toDateString(),
             'status' => $status,
             'userId' => $userId,
-            'workStart' => config('attendance.work_start'),
-            'workEnd' => config('attendance.work_end'),
-            'lateGrace' => config('attendance.late_grace_minutes'),
+            'workStart' => $office->work_start,
+            'workEnd' => $office->work_end,
+            'lateGrace' => $office->late_grace_minutes,
         ]);
     }
 
@@ -327,7 +526,7 @@ class AttendanceController extends Controller
      */
     public function exportReport(Request $request, AttendanceReportService $reportService)
     {
-        $startDate = Carbon::parse($request->get('start_date', Carbon::now()->startOfMonth()->toDateString()));
+        $startDate = Carbon::parse($request->get('start_date', Carbon::now()->toDateString()));
         $endDate = Carbon::parse($request->get('end_date', Carbon::now()->toDateString()));
         $status = $request->get('status', 'all');
         $userId = $request->get('user_id');

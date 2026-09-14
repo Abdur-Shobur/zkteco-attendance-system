@@ -3,118 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZKTeco Attendance - Login</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <style>
-        body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+    <meta name="csrf-token" content="{{ csrf_token() }}">
+    <title>Login · ZKTeco Attendance</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: { 950: '#0b1220', 900: '#111827' },
+                        accent: { DEFAULT: '#0d9488', dark: '#0f766e', soft: '#ccfbf1' }
+                    }
+                }
+            }
         }
-        .login-card {
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
-            overflow: hidden;
-            max-width: 400px;
-            width: 100%;
-        }
-        .login-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem;
-            text-align: center;
-        }
-        .login-body {
-            padding: 2rem;
-        }
-        .form-control {
-            border-radius: 10px;
-            border: 2px solid #e9ecef;
-            padding: 12px 15px;
-        }
-        .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
-        }
-        .btn-login {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            border-radius: 10px;
-            padding: 12px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .btn-login:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-    </style>
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 </head>
-<body>
-    <div class="login-card">
-        <div class="login-header">
-            <i class="fas fa-fingerprint fa-3x mb-3"></i>
-            <h3>ZKTeco Attendance</h3>
-            <p class="mb-0">Biometric Attendance System</p>
+<body class="min-h-screen bg-slate-100 font-sans antialiased">
+    <div class="min-h-screen grid lg:grid-cols-2">
+        <div class="hidden lg:flex relative overflow-hidden bg-ink-950 text-white p-12 flex-col justify-between">
+            <div class="absolute inset-0 opacity-40"
+                style="background: radial-gradient(circle at 20% 20%, #0d9488 0%, transparent 40%), radial-gradient(circle at 80% 70%, #0369a1 0%, transparent 35%);"></div>
+            <div class="relative">
+                <div class="inline-flex items-center gap-3">
+                    <div class="h-11 w-11 rounded-xl bg-accent flex items-center justify-center">
+                        <i class="fas fa-fingerprint"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-lg">ZKTeco Attendance</div>
+                        <div class="text-sm text-slate-400">Admin panel</div>
+                    </div>
+                </div>
+            </div>
+            <div class="relative max-w-md">
+                <h1 class="text-4xl font-semibold leading-tight">Secure access to your biometric attendance system</h1>
+                <p class="mt-4 text-slate-300">Sign in to manage users, attendance logs, reports, and device sync.</p>
+            </div>
+            <p class="relative text-sm text-slate-500">ADMS device endpoints stay public · Admin UI requires login</p>
         </div>
-        <div class="login-body">
-            @if ($errors->any())
-                <div class="alert alert-danger">
-                    <ul class="mb-0">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-            
-            @if (session('success'))
-                <div class="alert alert-success">
-                    {{ session('success') }}
-                </div>
-            @endif
 
-            <form method="POST" action="{{ route('login') }}">
-                @csrf
-                <div class="mb-3">
-                    <label for="email" class="form-label">
-                        <i class="fas fa-envelope me-2"></i>Email Address
-                    </label>
-                    <input type="email" class="form-control" id="email" name="email" 
-                           value="{{ old('email') }}" required autofocus>
+        <div class="flex items-center justify-center p-6 sm:p-10">
+            <div class="w-full max-w-md bg-white rounded-2xl border border-slate-200 shadow-sm p-8">
+                <div class="mb-8">
+                    <h2 class="text-2xl font-semibold text-slate-900">Sign in</h2>
+                    <p class="text-sm text-slate-500 mt-1">Use your admin account to continue</p>
                 </div>
-                <div class="mb-4">
-                    <label for="password" class="form-label">
-                        <i class="fas fa-lock me-2"></i>Password
-                    </label>
-                    <input type="password" class="form-control" id="password" name="password" required>
-                </div>
-                <div class="mb-3 form-check">
-                    <input type="checkbox" class="form-check-input" id="remember" name="remember">
-                    <label class="form-check-label" for="remember">
-                        Remember me
-                    </label>
-                </div>
-                <button type="submit" class="btn btn-primary btn-login w-100">
-                    <i class="fas fa-sign-in-alt me-2"></i>Login
-                </button>
-            </form>
-            
-            <div class="mt-4 text-center">
-                <small class="text-muted">
-                    <strong>Demo Credentials:</strong><br>
-                    Email: admin@company.com<br>
-                    Password: password
-                </small>
+
+                @if ($errors->any())
+                    <div class="mb-4 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 px-4 py-3 text-sm">
+                        {{ $errors->first() }}
+                    </div>
+                @endif
+
+                @if (session('success'))
+                    <div class="mb-4 rounded-xl border border-teal-200 bg-teal-50 text-teal-700 px-4 py-3 text-sm">
+                        {{ session('success') }}
+                    </div>
+                @endif
+
+                <form method="POST" action="{{ route('login') }}" class="space-y-4">
+                    @csrf
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                        <input type="email" id="email" name="email" value="{{ old('email') }}" required autofocus
+                            class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+                            placeholder="admin@company.com">
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                        <input type="password" id="password" name="password" required
+                            class="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-accent/30 focus:border-accent"
+                            placeholder="••••••••">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="remember" name="remember" value="1"
+                            class="rounded border-slate-300 text-accent focus:ring-accent"
+                            {{ old('remember') ? 'checked' : '' }}>
+                        <label for="remember" class="text-sm text-slate-600">Remember me</label>
+                    </div>
+                    <button type="submit"
+                        class="w-full rounded-xl bg-accent hover:bg-accent-dark text-white font-medium py-2.5 transition">
+                        <i class="fas fa-right-to-bracket mr-2"></i>Login
+                    </button>
+                </form>
             </div>
         </div>
     </div>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

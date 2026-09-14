@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\AttendanceLog;
+use App\Models\OfficeSetting;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
@@ -15,9 +16,11 @@ class AttendanceReportService
         $start = $startDate->copy()->startOfDay();
         $end = $endDate->copy()->endOfDay();
 
-        $workStart = config('attendance.work_start', '09:00');
-        $grace = (int) config('attendance.late_grace_minutes', 15);
-        $workingDays = config('attendance.working_days', [1, 2, 3, 4, 5]);
+        $settings = OfficeSetting::current();
+        $workStart = $settings->work_start ?: '09:00';
+        $workEnd = $settings->work_end ?: '18:00';
+        $grace = (int) ($settings->late_grace_minutes ?? 15);
+        $workingDays = collect($settings->working_days ?? [1, 2, 3, 4, 5])->map(fn ($d) => (int) $d)->all();
 
         $usersQuery = User::query()
             ->whereNotNull('device_user_id')
@@ -50,36 +53,36 @@ class AttendanceReportService
 
         $rows = [];
         $period = CarbonPeriod::create($start->copy()->startOfDay(), $end->copy()->startOfDay());
+        // Newest dates first in the daily report
+        $days = array_reverse(iterator_to_array($period));
 
-        foreach ($period as $day) {
+        foreach ($days as $day) {
             /** @var Carbon $day */
             $date = $day->format('Y-m-d');
-            $isWorkingDay = in_array((int) $day->dayOfWeek, $workingDays, true);
+            $isOffDay = $settings->isOffDay($day);
+            $isWorkingDay = !$isOffDay;
 
             foreach ($users as $user) {
                 $groupKey = $user->id . '|' . $date;
                 $dayLogs = $logsByUserDate->get($groupKey, collect());
 
-                // Also match orphan logs by device_user_id
                 if ($dayLogs->isEmpty() && $user->device_user_id) {
                     $dayLogs = $logsByUserDate->get('device:' . $user->device_user_id . '|' . $date, collect());
                 }
 
-                $row = $this->buildDayRow($user, $day, $dayLogs, $workStart, $grace, $isWorkingDay);
+                $row = $this->buildDayRow($user, $day, $dayLogs, $workStart, $grace, $isWorkingDay, $isOffDay);
 
                 if ($status && $status !== 'all' && $row['status'] !== $status) {
                     continue;
                 }
 
-                // Skip weekend absents unless they punched
-                if (!$isWorkingDay && $row['status'] === 'weekend' && $status && $status !== 'weekend') {
+                if ($isOffDay && $row['status'] === 'off_day' && $status && !in_array($status, ['off_day', 'weekend'], true)) {
                     continue;
                 }
 
                 $rows[] = $row;
             }
 
-            // Device users not in users table (orphan punches)
             if (!$userId) {
                 $orphanKeys = $logs
                     ->filter(fn (AttendanceLog $log) => !$log->user_id && $log->punch_time->format('Y-m-d') === $date)
@@ -97,7 +100,7 @@ class AttendanceReportService
                         'device_user_id' => $deviceUserId,
                         'employee_id' => $deviceUserId,
                     ];
-                    $row = $this->buildDayRow($fakeUser, $day, $dayLogs, $workStart, $grace, $isWorkingDay);
+                    $row = $this->buildDayRow($fakeUser, $day, $dayLogs, $workStart, $grace, $isWorkingDay, $isOffDay);
                     if ($status && $status !== 'all' && $row['status'] !== $status) {
                         continue;
                     }
@@ -114,47 +117,64 @@ class AttendanceReportService
             'total_rows' => count($rows),
         ];
 
+        // Latest punch / date first
+        $rows = collect($rows)
+            ->sortByDesc(function ($row) {
+                return ($row['date'] ?? '') . ' ' . ($row['clock_in_raw'] ?? $row['clock_out_raw'] ?? '00:00:00');
+            })
+            ->values()
+            ->all();
+
         return [
             'filters' => [
                 'start_date' => $start->toDateString(),
                 'end_date' => $end->toDateString(),
                 'status' => $status ?: 'all',
                 'work_start' => $workStart,
+                'work_end' => $workEnd,
                 'late_grace_minutes' => $grace,
+                'working_days' => $workingDays,
             ],
             'summary' => $summary,
             'rows' => $rows,
         ];
     }
 
-    private function buildDayRow(object $user, Carbon $day, Collection $dayLogs, string $workStart, int $grace, bool $isWorkingDay): array
-    {
+    private function buildDayRow(
+        object $user,
+        Carbon $day,
+        Collection $dayLogs,
+        string $workStart,
+        int $grace,
+        bool $isWorkingDay,
+        bool $isOffDay
+    ): array {
         $date = $day->format('Y-m-d');
         $clockIn = null;
         $clockOut = null;
 
         if ($dayLogs->isNotEmpty()) {
-            $sorted = $dayLogs->sortBy('punch_time')->values();
-            $clockIn = $sorted->first()->punch_time;
-            $last = $sorted->last()->punch_time;
-            // Only treat as clock-out if later than first punch
-            if ($sorted->count() > 1 && $last->ne($clockIn)) {
-                $clockOut = $last;
+            $sorted = $dayLogs->sortBy(fn ($log) => $log->punch_time->timestamp)->values();
+            // Earliest punch = Clock In, latest punch = Clock Out
+            $clockIn = $sorted->first()->punch_time->copy();
+            $latest = $sorted->last()->punch_time->copy();
+            if ($sorted->count() > 1 && $latest->greaterThan($clockIn)) {
+                $clockOut = $latest;
             }
         }
 
         $status = 'absent';
         $lateByMinutes = null;
 
-        if (!$isWorkingDay && !$clockIn) {
-            $status = 'weekend';
+        if ($isOffDay && !$clockIn) {
+            $status = 'off_day';
         } elseif ($clockIn) {
             $threshold = Carbon::parse($date . ' ' . $workStart)->addMinutes($grace);
             if ($clockIn->gt($threshold)) {
                 $status = 'late';
                 $lateByMinutes = $clockIn->diffInMinutes(Carbon::parse($date . ' ' . $workStart));
             } elseif (!$clockOut) {
-                $status = 'incomplete'; // punched in but no out yet
+                $status = 'incomplete';
             } else {
                 $status = 'present';
             }

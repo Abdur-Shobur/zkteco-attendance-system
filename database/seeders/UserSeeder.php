@@ -15,14 +15,17 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Create admin user
-        User::create([
-            'name' => 'Admin User',
-            'email' => 'admin@company.com',
-            'email_verified_at' => now(),
-            'password' => Hash::make('password'),
-            'device_user_id' => '1',
-            'employee_id' => 'EMP001',
-        ]);
+        User::updateOrCreate(
+            ['email' => 'admin@company.com'],
+            [
+                'name' => 'Admin User',
+                'email_verified_at' => now(),
+                'password' => Hash::make('password'),
+                'device_user_id' => null,
+                'employee_id' => 'ADMIN',
+                'is_admin' => true,
+            ]
+        );
 
         // Create sample employees with device mapping
         $employees = [
@@ -59,14 +62,17 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($employees as $employee) {
-            User::create([
-                'name' => $employee['name'],
-                'email' => $employee['email'],
-                'email_verified_at' => now(),
-                'password' => Hash::make('password'),
-                'device_user_id' => $employee['device_user_id'],
-                'employee_id' => $employee['employee_id'],
-            ]);
+            User::updateOrCreate(
+                ['email' => $employee['email']],
+                [
+                    'name' => $employee['name'],
+                    'email_verified_at' => now(),
+                    'password' => Hash::make('password'),
+                    'device_user_id' => $employee['device_user_id'],
+                    'employee_id' => $employee['employee_id'],
+                    'is_admin' => false,
+                ]
+            );
         }
     }
 }

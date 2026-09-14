@@ -144,6 +144,7 @@ class ZKTecoService
                         'password' => bcrypt('12345678'), // Default password
                         'device_user_id' => $deviceUser['userid'],
                         'employee_id' => $deviceUser['userid'],
+                        'is_admin' => false,
                     ]);
                     $syncedCount++;
                 }

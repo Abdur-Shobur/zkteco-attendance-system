@@ -2,7 +2,7 @@
 
 @section('title', 'Reports')
 @section('page_title', 'Attendance Report')
-@section('page_subtitle', 'Office hours ' . $workStart . ' – ' . $workEnd . ' · Late after ' . $lateGrace . ' min grace')
+@section('page_subtitle', 'Office hours ' . \App\Models\OfficeSetting::current()->workHoursLabel() . ' · Late after ' . $lateGrace . ' min grace')
 
 @section('header_actions')
     <a href="{{ route('attendance.report.export', request()->query()) }}"
@@ -99,8 +99,8 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
-                    @forelse ($report['rows'] as $row)
-                        @if ($row['status'] === 'weekend')
+                        @forelse ($report['rows'] as $row)
+                        @if (in_array($row['status'], ['weekend', 'off_day'], true))
                             @continue
                         @endif
                         <tr class="hover:bg-slate-50/80">

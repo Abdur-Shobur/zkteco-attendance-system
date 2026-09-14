@@ -229,6 +229,7 @@ class AdmsService
                         'password' => bcrypt('12345678'),
                         'device_user_id' => $userid,
                         'employee_id' => $userid,
+                        'is_admin' => false,
                     ]);
                     $syncedCount++;
                 }

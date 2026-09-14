@@ -41,16 +41,16 @@
     @stack('head')
 </head>
 <body class="bg-slate-100 text-slate-800 font-sans antialiased">
-    <div x-data="{ sidebarOpen: false }" class="min-h-screen lg:flex">
+    <div x-data="{ sidebarOpen: false }" class="min-h-screen">
         {{-- Mobile overlay --}}
         <div x-show="sidebarOpen" x-cloak @click="sidebarOpen = false"
             class="fixed inset-0 z-40 bg-slate-900/50 lg:hidden"></div>
 
-        {{-- Sidebar --}}
+        {{-- Sidebar (fixed on all breakpoints) --}}
         <aside
-            class="fixed inset-y-0 left-0 z-50 w-64 bg-ink-950 text-slate-300 transform transition-transform duration-200 lg:static lg:translate-x-0"
+            class="fixed inset-y-0 left-0 z-50 w-64 bg-ink-950 text-slate-300 transform transition-transform duration-200 flex flex-col lg:translate-x-0"
             :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'">
-            <div class="h-16 flex items-center gap-3 px-5 border-b border-white/10">
+            <div class="h-16 shrink-0 flex items-center gap-3 px-5 border-b border-white/10">
                 <div class="h-9 w-9 rounded-lg bg-accent flex items-center justify-center text-white">
                     <i class="fas fa-fingerprint"></i>
                 </div>
@@ -60,7 +60,7 @@
                 </div>
             </div>
 
-            <nav class="p-3 space-y-1 text-sm">
+            <nav class="flex-1 overflow-y-auto p-3 space-y-1 text-sm">
                 <p class="px-3 pt-3 pb-1 text-[11px] uppercase tracking-wider text-slate-500">Main</p>
 
                 <a href="{{ route('attendance.index') }}"
@@ -79,6 +79,10 @@
                     class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 hover:text-white transition {{ request()->routeIs('attendance.report*') ? 'active' : '' }}">
                     <i class="fas fa-chart-column w-5 text-center"></i> Reports
                 </a>
+                <a href="{{ route('attendance.settings.page') }}"
+                    class="nav-link flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-white/5 hover:text-white transition {{ request()->routeIs('attendance.settings*') ? 'active' : '' }}">
+                    <i class="fas fa-business-time w-5 text-center"></i> Office Settings
+                </a>
 
                 <p class="px-3 pt-5 pb-1 text-[11px] uppercase tracking-wider text-slate-500">Device</p>
                 <a href="{{ route('attendance.device.page') }}"
@@ -87,13 +91,29 @@
                 </a>
             </nav>
 
-            <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10 text-xs text-slate-500">
-                ADMS · Port 8081
+            <div class="shrink-0 p-4 border-t border-white/10">
+                <a href="{{ route('attendance.profile.page') }}"
+                    class="flex items-center gap-3 mb-3 rounded-lg hover:bg-white/5 p-1 -m-1 transition">
+                    <div class="h-8 w-8 rounded-full bg-accent/20 text-teal-300 flex items-center justify-center text-xs font-semibold">
+                        {{ strtoupper(substr(auth()->user()->name ?? 'A', 0, 1)) }}
+                    </div>
+                    <div class="min-w-0">
+                        <div class="text-sm text-white truncate">{{ auth()->user()->name ?? 'Admin' }}</div>
+                        <div class="text-[11px] text-slate-500 truncate">Update profile</div>
+                    </div>
+                </a>
+                <form method="POST" action="{{ route('logout') }}">
+                    @csrf
+                    <button type="submit"
+                        class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-white/10 text-sm text-slate-300 hover:bg-white/5 hover:text-white transition">
+                        <i class="fas fa-right-from-bracket"></i> Logout
+                    </button>
+                </form>
             </div>
         </aside>
 
-        {{-- Main --}}
-        <div class="flex-1 min-w-0 flex flex-col min-h-screen">
+        {{-- Main (offset for fixed sidebar on desktop) --}}
+        <div class="min-h-screen flex flex-col lg:pl-64">
             <header class="h-16 bg-white border-b border-slate-200 sticky top-0 z-30">
                 <div class="h-full px-4 sm:px-6 flex items-center justify-between gap-4">
                     <div class="flex items-center gap-3">

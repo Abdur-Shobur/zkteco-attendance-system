@@ -24,6 +24,7 @@ class User extends Authenticatable
         'password',
         'device_user_id',
         'employee_id',
+        'is_admin',
     ];
 
     /**
@@ -39,12 +40,18 @@ class User extends Authenticatable
     /**
      * The attributes that should be cast.
      *
-     * @var array<string, string>
+     * @var array<string, mixed>
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
+        'is_admin' => 'boolean',
     ];
+
+    public function isAdmin(): bool
+    {
+        return (bool) $this->is_admin;
+    }
 
     /**
      * Get the attendance logs for the user.
